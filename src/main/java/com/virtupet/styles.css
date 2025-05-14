@@ -1,1 +1,54 @@
-.chatbox {-fx-background-color: #2E2E2E; -fx-border-color: #1C1C1C; -fx-border-radius: 10px; -fx-padding: 10px;}
+.root {
+    -fx-background-color: #f5f5f5;
+}
+
+.chat-container {
+    -fx-background-color: #f5f5f5;
+    -fx-padding: 10px;
+}
+
+.input-field {
+    -fx-pref-height: 40px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 0 15px;
+    -fx-font-size: 14px;
+}
+
+.send-button {
+    -fx-background-color: #0078FF;
+    -fx-text-fill: white;
+    -fx-background-radius: 20px;
+    -fx-pref-height: 40px;
+    -fx-pref-width: 80px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.send-button:hover {
+    -fx-background-color: #0066CC;
+}
+
+.user-bubble {
+    -fx-background-color: #0078FF;
+    -fx-text-fill: white;
+    -fx-background-radius: 15px;
+    -fx-padding: 10px 15px;
+    -fx-font-size: 14px;
+}
+
+.bot-bubble {
+    -fx-background-color: #E5E5EA;
+    -fx-text-fill: black;
+    -fx-background-radius: 15px;
+    -fx-padding: 10px 15px;
+    -fx-font-size: 14px;
+}
+
+.scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}

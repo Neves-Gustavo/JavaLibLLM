@@ -1,11 +1,11 @@
 package com.virtupet;
-//i need to import a json package to java
 
 import java.net.http.*;
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.io.IOException;
+import org.json.*; // You'll need to add this dependency
 
 public class GeminiClient {
     protected static final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
@@ -18,8 +18,9 @@ public class GeminiClient {
         }
 
         try {
-            String resposta = app.enviarMensagem("Você é uma inteligencia artificial que funcionara como pet virtual, e ajudará nosso usuario com tarefas diarias e ajuda afetiva integral com o mesmo. Sendo o Mais amigavel possivel. Responder a mensagem com: (Olá, eu sou o VirtuPet)" );
-            System.out.println("Resposta da API: " + resposta);
+            String resposta = app.enviarMensagem("Você é uma inteligencia artificial que funcionara como pet virtual...");
+            String cleanResponse = app.parseResponse(resposta);
+            System.out.println("Resposta formatada: " + cleanResponse);
         } catch (IOException | InterruptedException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
             e.printStackTrace();
@@ -28,14 +29,14 @@ public class GeminiClient {
 
     public String enviarMensagem(String mensagem) throws IOException, InterruptedException {
         String json = """
+                {
+                  "contents": [
                     {
-                      "contents": [
-                        {
-                          "role": "user",
-                          "parts": [{ "text": "%s" }]
-                        }
-                      ]
+                      "role": "user",
+                      "parts": [{ "text": "%s" }]
                     }
+                  ]
+                }
                 """.formatted(mensagem);
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -48,5 +49,39 @@ public class GeminiClient {
                 .send(request, BodyHandlers.ofString());
 
         return response.body();
+    }
+
+    public String parseResponse(String jsonResponse) {
+        try {
+            JSONObject jsonObject = new JSONObject(jsonResponse);
+
+            // Check for errors first
+            if (jsonObject.has("error")) {
+                return "Erro na API: " + jsonObject.getJSONObject("error").getString("message");
+            }
+
+            // Get the first candidate
+            JSONArray candidates = jsonObject.getJSONArray("candidates");
+            if (candidates.length() == 0) {
+                return "Nenhuma resposta recebida da API";
+            }
+
+            JSONObject firstCandidate = candidates.getJSONObject(0);
+            JSONObject content = firstCandidate.getJSONObject("content");
+            JSONArray parts = content.getJSONArray("parts");
+
+            // Extract text from all parts
+            StringBuilder responseText = new StringBuilder();
+            for (int i = 0; i < parts.length(); i++) {
+                JSONObject part = parts.getJSONObject(i);
+                if (part.has("text")) {
+                    responseText.append(part.getString("text"));
+                }
+            }
+
+            return responseText.toString().trim();
+        } catch (JSONException e) {
+            return "Erro ao processar resposta: " + e.getMessage();
+        }
     }
 }
