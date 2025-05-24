@@ -1,0 +1,23 @@
+.root-container {
+    -fx-background-color: #2F2F2F;
+}
+
+.chat-bubble-user {
+    -fx-background-color: #4A90E2;
+    -fx-text-fill: white;
+    -fx-background-radius: 15 15 0 15;
+}
+
+.chat-bubble-bot {
+    -fx-background-color: #404040;
+    -fx-text-fill: white;
+    -fx-background-radius: 15 15 15 0;
+}
+
+.command-execution {
+    -fx-border-color: #34D399;
+    -fx-border-width: 2;
+    -fx-border-radius: 10;
+}
+.system-alert { -fx-text-fill: #ff4444; }
+.command-execution { -fx-text-fill: #34D399; }

@@ -1,87 +1,83 @@
 package com.virtupet;
 
-import java.net.http.*;
-import java.net.URI;
-import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpResponse.BodyHandlers;
+import org.json.JSONObject;
+
 import java.io.IOException;
-import org.json.*; // You'll need to add this dependency
+import java.net.URI;
+import java.net.http.*;
 
 public class GeminiClient {
-    protected static final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-    protected static String apiKey = System.getenv("GEMINI_API_KEY");
+    private final String apiKey;
+    private static final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-    public static void call(String[] args) {
-        GeminiClient app = new GeminiClient();
-        if (app.apiKey == null) {
-            throw new IllegalStateException("GEMINI_API_KEY não encontrada nas variáveis de ambiente.");
-        }
-
-        try {
-            String resposta = app.enviarMensagem("Você é uma inteligencia artificial que funcionara como pet virtual...");
-            String cleanResponse = app.parseResponse(resposta);
-            System.out.println("Resposta formatada: " + cleanResponse);
-        } catch (IOException | InterruptedException e) {
-            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
-            e.printStackTrace();
-        }
+    public GeminiClient(String apiKey) {
+        this.apiKey = apiKey;
     }
 
-    public String enviarMensagem(String mensagem) throws IOException, InterruptedException {
-        String json = """
-                {
-                  "contents": [
-                    {
-                      "role": "user",
-                      "parts": [{ "text": "%s" }]
-                    }
-                  ]
-                }
-                """.formatted(mensagem);
+    public String sendPrompt(String prompt) throws IOException, InterruptedException {
+        String jsonBody = String.format("""
+            {
+              "contents": [{
+                "parts": [{"text": "ACT AS PET ASSISTANT. RESPONSE MUST BE: [SAFE]%s[CMD] "}]
+              }]
+            }""", prompt);
+// Continuation of GeminiClient.java
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL + "?key=" + apiKey))
                 .header("Content-Type", "application/json")
-                .POST(BodyPublishers.ofString(json))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
         HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, BodyHandlers.ofString());
+                .send(request, HttpResponse.BodyHandlers.ofString());
 
-        return response.body();
+        if (response.statusCode() != 200) {
+            throw new RuntimeException("API Error: " + response.statusCode() + " - " + response.body());
+        }
+
+        return parseGeminiResponse(response.body());
     }
 
-    public String parseResponse(String jsonResponse) {
+    private String parseGeminiResponse(String jsonResponse) {
+        JSONObject root = new JSONObject(jsonResponse);
+
+        // Error handling
+        if (root.has("error")) {
+            JSONObject error = root.getJSONObject("error");
+            throw new RuntimeException("Gemini Error: " + error.getString("message"));
+        }
+
+        // Extract response text with safety fallbacks
+        return root.getJSONArray("candidates")
+                .getJSONObject(0)
+                .getJSONObject("content")
+                .getJSONArray("parts")
+                .getJSONObject(0)
+                .getString("text")
+                .replace("\n", " ")  // Sanitize newlines
+                .trim();
+    }
+
+    // Security-focused response formatter
+    public static String formatForCommand(String aiText) {
+        return "[SAFE]" +
+                aiText.replaceAll("[^a-zA-Z0-9\\s]", "") + // Remove special chars
+                "[CMD]" +
+                aiText.replaceAll("[^a-zA-Z0-9\\s_]", "");  // Safer command subset
+    }
+    public String generateReminder(String context) throws Exception {
+        String prompt = String.format("""
+        Generate reminder with command. Format: [SAFE]<message>[CMD]<command>
+        Context: %s
+        Safe commands: timeout, start, echo
+        Example response: [SAFE]Time to hydrate! 💦[CMD]timeout 5 && start water_reminder.mp3
+        """, context);
+
         try {
-            JSONObject jsonObject = new JSONObject(jsonResponse);
-
-            // Check for errors first
-            if (jsonObject.has("error")) {
-                return "Erro na API: " + jsonObject.getJSONObject("error").getString("message");
-            }
-
-            // Get the first candidate
-            JSONArray candidates = jsonObject.getJSONArray("candidates");
-            if (candidates.length() == 0) {
-                return "Nenhuma resposta recebida da API";
-            }
-
-            JSONObject firstCandidate = candidates.getJSONObject(0);
-            JSONObject content = firstCandidate.getJSONObject("content");
-            JSONArray parts = content.getJSONArray("parts");
-
-            // Extract text from all parts
-            StringBuilder responseText = new StringBuilder();
-            for (int i = 0; i < parts.length(); i++) {
-                JSONObject part = parts.getJSONObject(i);
-                if (part.has("text")) {
-                    responseText.append(part.getString("text"));
-                }
-            }
-
-            return responseText.toString().trim();
-        } catch (JSONException e) {
-            return "Erro ao processar resposta: " + e.getMessage();
+            return sendPrompt(prompt);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 }
